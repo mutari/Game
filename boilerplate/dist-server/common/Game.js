@@ -34,21 +34,23 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 // GAME OBJECTS
 //
 // /////////////////////////////////////////////////////////
-var YourGameObject =
+var Player =
 /*#__PURE__*/
 function (_DynamicObject) {
-  _inherits(YourGameObject, _DynamicObject);
+  _inherits(Player, _DynamicObject);
 
-  function YourGameObject(gameEngine, options, props) {
-    _classCallCheck(this, YourGameObject);
+  function Player(gameEngine, options, props) {
+    _classCallCheck(this, Player);
 
-    return _possibleConstructorReturn(this, _getPrototypeOf(YourGameObject).call(this, gameEngine, options, props));
+    return _possibleConstructorReturn(this, _getPrototypeOf(Player).call(this, gameEngine, options, props));
   }
 
-  _createClass(YourGameObject, [{
+  _createClass(Player, [{
     key: "syncTo",
     value: function syncTo(other) {
-      _get(_getPrototypeOf(YourGameObject.prototype), "syncTo", this).call(this, other);
+      _get(_getPrototypeOf(Player.prototype), "syncTo", this).call(this, other);
+
+      this.health = other.health;
     }
   }], [{
     key: "netScheme",
@@ -57,11 +59,11 @@ function (_DynamicObject) {
         health: {
           type: _lanceGg.BaseTypes.TYPES.INT16
         }
-      }, _get(_getPrototypeOf(YourGameObject), "netScheme", this));
+      }, _get(_getPrototypeOf(Player), "netScheme", this));
     }
   }]);
 
-  return YourGameObject;
+  return Player;
 }(_lanceGg.DynamicObject); // /////////////////////////////////////////////////////////
 //
 // GAME ENGINE
@@ -104,7 +106,7 @@ function (_GameEngine) {
   _createClass(Game, [{
     key: "registerClasses",
     value: function registerClasses(serializer) {
-      serializer.registerClass(YourGameObject);
+      serializer.registerClass(Player);
     }
   }, {
     key: "gameLogic",
@@ -112,7 +114,24 @@ function (_GameEngine) {
   }, {
     key: "processInput",
     value: function processInput(inputData, playerId) {
-      _get(_getPrototypeOf(Game.prototype), "processInput", this).call(this, inputData, playerId);
+      _get(_getPrototypeOf(Game.prototype), "processInput", this).call(this, inputData, playerId); // get the player paddle tied to the player socket
+
+
+      var player = this.world.queryObject({
+        playerId: playerId
+      });
+
+      if (player) {
+        if (inputData.input === 'up') {
+          player.position.y -= 5;
+        } else if (inputData.input === 'down') {
+          player.position.y += 5;
+        } else if (inputData.input === 'left') {
+          player.position.x -= 5;
+        } else if (inputData.input === 'right') {
+          player.position.x += 5;
+        }
+      }
     } // /////////////////////////////////////////////////////////
     //
     // SERVER ONLY CODE
@@ -121,13 +140,29 @@ function (_GameEngine) {
 
   }, {
     key: "serverSideInit",
-    value: function serverSideInit() {}
+    value: function serverSideInit() {} // create the paddle objects
+    //this.addObjectToWorld(new Paddle(this, null, { position: new TwoVector(PADDING, 0) }));
+    // attach newly connected player to next available paddle
+
   }, {
     key: "serverSidePlayerJoined",
-    value: function serverSidePlayerJoined(ev) {}
+    value: function serverSidePlayerJoined(ev) {
+      var player = this.addObjectToWorld(new Player(this, null, {
+        position: new _lanceGg.TwoVector(100, 100)
+      }));
+      player.playerId = ev.playerId;
+    }
   }, {
     key: "serverSidePlayerDisconnected",
-    value: function serverSidePlayerDisconnected(ev) {} // /////////////////////////////////////////////////////////
+    value: function serverSidePlayerDisconnected(ev) {
+      var player = this.world.queryObjects({
+        instanceType: Player
+      });
+
+      for (var i = 0; i < player.length; i++) {
+        if (player[i].playerId == ev.playerId) this.removeObjectFromWorld(player[i].id);
+      }
+    } // /////////////////////////////////////////////////////////
     //
     // CLIENT ONLY CODE
     //
@@ -135,10 +170,43 @@ function (_GameEngine) {
 
   }, {
     key: "clientSideInit",
-    value: function clientSideInit() {}
+    value: function clientSideInit() {
+      this.controls = new _lanceGg.KeyboardControls(this.renderer.clientEngine);
+      this.controls.bindKey('up', 'up', {
+        repeat: true
+      });
+      this.controls.bindKey('down', 'down', {
+        repeat: true
+      });
+      this.controls.bindKey('left', 'left', {
+        repeat: true
+      });
+      this.controls.bindKey('right', 'right', {
+        repeat: true
+      });
+    }
   }, {
     key: "clientSideDraw",
-    value: function clientSideDraw() {}
+    value: function clientSideDraw() {
+      var players = this.world.queryObjects({
+        instanceType: Player
+      });
+      if (!players) return;
+      var gamePanel = document.querySelector('.GamePanel');
+      gamePanel.innerHTML = "";
+
+      for (var i = 0; i < players.length; i++) {
+        var div = document.createElement('div');
+        div.classList.add(".player".concat(players[i].playerId));
+        div.style.width = '10px';
+        div.style.height = '10px';
+        div.style.position = "absolute";
+        div.style.top = players[i].position.y + 10;
+        div.style.left = players[i].position.x;
+        div.style.border = "solid 1px red";
+        gamePanel.appendChild(div);
+      }
+    }
   }]);
 
   return Game;
