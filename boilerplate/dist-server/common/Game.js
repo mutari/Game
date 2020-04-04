@@ -34,6 +34,9 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 // GAME OBJECTS
 //
 // /////////////////////////////////////////////////////////
+var BASEX = 150;
+var BASEY = 150;
+
 var Player =
 /*#__PURE__*/
 function (_DynamicObject) {
@@ -64,6 +67,27 @@ function (_DynamicObject) {
   }]);
 
   return Player;
+}(_lanceGg.DynamicObject);
+
+var Thing =
+/*#__PURE__*/
+function (_DynamicObject2) {
+  _inherits(Thing, _DynamicObject2);
+
+  function Thing(gameEngine, options, props) {
+    _classCallCheck(this, Thing);
+
+    return _possibleConstructorReturn(this, _getPrototypeOf(Thing).call(this, gameEngine, options, props));
+  }
+
+  _createClass(Thing, [{
+    key: "syncTo",
+    value: function syncTo(other) {
+      _get(_getPrototypeOf(Thing.prototype), "syncTo", this).call(this, other);
+    }
+  }]);
+
+  return Thing;
 }(_lanceGg.DynamicObject); // /////////////////////////////////////////////////////////
 //
 // GAME ENGINE
@@ -107,6 +131,7 @@ function (_GameEngine) {
     key: "registerClasses",
     value: function registerClasses(serializer) {
       serializer.registerClass(Player);
+      serializer.registerClass(Thing);
     }
   }, {
     key: "gameLogic",
@@ -140,9 +165,21 @@ function (_GameEngine) {
 
   }, {
     key: "serverSideInit",
-    value: function serverSideInit() {} // create the paddle objects
-    //this.addObjectToWorld(new Paddle(this, null, { position: new TwoVector(PADDING, 0) }));
-    // attach newly connected player to next available paddle
+    value: function serverSideInit() {
+      this.addObjectToWorld(new Thing(this, null, {
+        position: new _lanceGg.TwoVector(10, 100)
+      }));
+      this.addObjectToWorld(new Thing(this, null, {
+        position: new _lanceGg.TwoVector(30, 100)
+      }));
+      this.addObjectToWorld(new Thing(this, null, {
+        position: new _lanceGg.TwoVector(100, 10)
+      }));
+      this.addObjectToWorld(new Thing(this, null, {
+        position: new _lanceGg.TwoVector(100, 30)
+      })); // create the paddle objects
+      //this.addObjectToWorld(new Paddle(this, null, { position: new TwoVector(PADDING, 0) }));
+    } // attach newly connected player to next available paddle
 
   }, {
     key: "serverSidePlayerJoined",
@@ -188,23 +225,59 @@ function (_GameEngine) {
   }, {
     key: "clientSideDraw",
     value: function clientSideDraw() {
+      var gamePanel = document.querySelector('.GamePanel');
+      gamePanel.innerHTML = "";
+      var things = this.world.queryObjects({
+        instanceType: Thing
+      });
       var players = this.world.queryObjects({
         instanceType: Player
       });
-      if (!players) return;
-      var gamePanel = document.querySelector('.GamePanel');
-      gamePanel.innerHTML = "";
+      var client = this.world.queryObjects({
+        playerId: this.playerId
+      })[0];
+      if (!things && !players) return;
 
-      for (var i = 0; i < players.length; i++) {
-        var div = document.createElement('div');
-        div.classList.add(".player".concat(players[i].playerId));
-        div.style.width = '10px';
-        div.style.height = '10px';
-        div.style.position = "absolute";
-        div.style.top = players[i].position.y + 10;
-        div.style.left = players[i].position.x;
-        div.style.border = "solid 1px red";
-        gamePanel.appendChild(div);
+      if (things || players) {
+        for (var i = 0; i < players.length; i++) {
+          console.log('this1');
+
+          if (players[i].playerId == client.playerId) {
+            var div = document.createElement('div');
+            div.classList.add(".player".concat(players[i].playerId));
+            div.style.width = '10px';
+            div.style.height = '10px';
+            div.style.position = "absolute";
+            div.style.top = BASEY;
+            div.style.left = BASEX;
+            div.style.border = "solid 1px red";
+            gamePanel.appendChild(div);
+          } else {
+            console.log('this2');
+            var div = document.createElement('div');
+            div.classList.add(".player".concat(players[i].playerId));
+            div.style.width = '10px';
+            div.style.height = '10px';
+            div.style.position = "absolute";
+            div.style.top = players[i].position.y + client.position.y + 10 + BASEY;
+            div.style.left = players[i].position.x + client.position.x + BASEX;
+            div.style.border = "solid 1px red";
+            gamePanel.appendChild(div);
+          }
+        }
+
+        for (var i = 0; i < things.length; i++) {
+          console.log('this3');
+          var div = document.createElement('div');
+          div.classList.add(".things".concat(things[i].playerId));
+          div.style.width = '10px';
+          div.style.height = '10px';
+          div.style.position = "absolute";
+          div.style.top = things[i].position.y + client.position.y + 10 + BASEY;
+          div.style.left = things[i].position.x + client.position.x + BASEX;
+          div.style.border = "solid 1px blue";
+          gamePanel.appendChild(div);
+        }
       }
     }
   }]);

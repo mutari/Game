@@ -12,7 +12,7 @@ var _Game = _interopRequireDefault(require("./common/Game"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var PORT = process.env.PORT || 3000;
+var PORT = process.env.PORT || 80;
 
 var INDEX = _path.default.join(__dirname, '../dist/index.html'); // define routes and socket
 
